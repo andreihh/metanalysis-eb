@@ -1,0 +1,3 @@
+rootProject.name = 'metanalysis-visibility'
+
+include 'metanalysis-visibility-java'
