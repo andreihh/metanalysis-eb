@@ -1,4 +1,4 @@
-# Metanalysis-OCB
+# Metanalysis-Visibility
 
 [![Build Status](https://travis-ci.org/andreihh/metanalysis-visibility.svg)](https://travis-ci.org/andreihh/metanalysis-visibility)
 [![codecov](https://codecov.io/gh/andreihh/metanalysis-visibility/branch/master/graph/badge.svg)](https://codecov.io/gh/andreihh/metanalysis-visibility)
