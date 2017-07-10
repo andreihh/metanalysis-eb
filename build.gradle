@@ -107,7 +107,6 @@ task codeCoverageReport(type: JacocoReport) {
 
 subprojects {
     apply plugin: 'java-library'
-    apply plugin: 'maven'
 
     configurations {
         apiElements {
@@ -126,6 +125,6 @@ mainClassName = 'org.metanalysis.visibility.Main'
 
 dependencies {
     implementation "com.github.andreihh.metanalysis:metanalysis-core:$metanalysis_version"
-    runtimeOnly projects(':metanalysis-visibility-java')
+    runtimeOnly project(':metanalysis-visibility-java')
 }
 
