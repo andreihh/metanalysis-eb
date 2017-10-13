@@ -1,4 +1,3 @@
 dependencies {
-    //api "com.github.andreihh.metanalysis:metanalysis-core:$metanalysis_version"
-    api "org.metanalysis:metanalysis-core:$metanalysis_version"
+    api "com.github.andreihh.metanalysis:metanalysis-core:$metanalysis_version"
 }

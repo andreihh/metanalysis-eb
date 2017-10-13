@@ -16,9 +16,5 @@ The Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 applies to the following third-party libraries:
 - kotlin-stdlib, Copyright JetBrains s.r.o.
 - kotlin-reflect, Copyright JetBrains s.r.o.
-- kotlin-test-junit, Copyright JetBrains s.r.o.
-
-The Eclipse Public License, Version 1.0
-(https://www.eclipse.org/legal/epl-v10.html) applies to the following
-third-party libraries:
-- junit, Copyright JUnit
+- jackson-module-kotlin, Copyright FasterXML
+- metanalysis-core, Copyright Andrei Heidelbacher
