@@ -14,17 +14,13 @@
  * limitations under the License.
  */
 
-@file:JvmName("Main")
+package org.metanalysis.visibility.core
 
-package org.metanalysis.visibility
+import org.metanalysis.core.model.Project
 
-import org.metanalysis.core.repository.PersistentRepository
-import org.metanalysis.visibility.core.HistoryVisitor
+class VisibilityAnalyzerMock : VisibilityAnalyzer {
+    override val pattern: Regex = Regex(".*\\.mock")
 
-fun main(args: Array<String>) {
-    val repository = PersistentRepository.load() ?: error("Project not found!")
-    val stats = HistoryVisitor.visit(repository.getHistory())
-    stats.entries.sortedByDescending { it.value }.forEach { (path, value) ->
-        println("'$path': $value")
-    }
+    override fun getVisibility(project: Project, id: String): Int =
+            requireNotNull(project.find(id)?.let { 1 })
 }

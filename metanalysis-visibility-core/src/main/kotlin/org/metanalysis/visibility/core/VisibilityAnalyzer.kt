@@ -14,17 +14,26 @@
  * limitations under the License.
  */
 
-@file:JvmName("Main")
+package org.metanalysis.visibility.core
 
-package org.metanalysis.visibility
+import org.metanalysis.core.model.Project
+import org.metanalysis.core.model.SourceNode
 
-import org.metanalysis.core.repository.PersistentRepository
-import org.metanalysis.visibility.core.HistoryVisitor
+import java.util.ServiceLoader
 
-fun main(args: Array<String>) {
-    val repository = PersistentRepository.load() ?: error("Project not found!")
-    val stats = HistoryVisitor.visit(repository.getHistory())
-    stats.entries.sortedByDescending { it.value }.forEach { (path, value) ->
-        println("'$path': $value")
+interface VisibilityAnalyzer {
+    companion object {
+        private val analyzers =
+                ServiceLoader.load(VisibilityAnalyzer::class.java)
+
+        private val String.fileName: String
+            get() = substringAfterLast(SourceNode.PATH_SEPARATOR)
+
+        fun getAnalyzer(path: String): VisibilityAnalyzer? =
+                analyzers.firstOrNull { path.fileName.matches(it.pattern) }
     }
+
+    val pattern: Regex
+
+    fun getVisibility(project: Project, id: String): Int
 }

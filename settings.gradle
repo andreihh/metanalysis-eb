@@ -1,3 +1,4 @@
 rootProject.name = 'metanalysis-visibility'
 
+include 'metanalysis-visibility-core'
 include 'metanalysis-visibility-java'

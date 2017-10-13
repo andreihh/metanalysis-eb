@@ -1,0 +1,6 @@
+dependencies {
+    api project(':metanalysis-visibility-core')
+
+    //testImplementation "com.github.andreihh.metanalysis:metanalysis-test:$metanalysis_version"
+    testImplementation "org.metanalysis:metanalysis-test:$metanalysis_version"
+}

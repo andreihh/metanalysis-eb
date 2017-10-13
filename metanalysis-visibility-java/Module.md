@@ -1,3 +1,3 @@
 # Module metanalysis-visibility-java
 
-# Package metanalysis.visibility.java
+# Package org.metanalysis.visibility.java

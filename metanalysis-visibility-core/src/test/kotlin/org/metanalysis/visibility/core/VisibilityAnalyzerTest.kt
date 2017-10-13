@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-@file:JvmName("Main")
+package org.metanalysis.visibility.core
 
-package org.metanalysis.visibility
+import org.junit.Test
 
-import org.metanalysis.core.repository.PersistentRepository
-import org.metanalysis.visibility.core.HistoryVisitor
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
-fun main(args: Array<String>) {
-    val repository = PersistentRepository.load() ?: error("Project not found!")
-    val stats = HistoryVisitor.visit(repository.getHistory())
-    stats.entries.sortedByDescending { it.value }.forEach { (path, value) ->
-        println("'$path': $value")
+class VisibilityAnalyzerTest {
+    @Test fun `test get provided analyzer by language returns non-null`() {
+        assertNotNull(VisibilityAnalyzer.getAnalyzer("Test.mock"))
+    }
+
+    @Test fun `test get unprovided analyzer by language returns null`() {
+        assertNull(VisibilityAnalyzer.getAnalyzer("Test.java"))
     }
 }
