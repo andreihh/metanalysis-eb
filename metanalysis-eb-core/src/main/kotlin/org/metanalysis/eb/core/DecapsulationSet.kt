@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Andrei Heidelbacher <andrei.heidelbacher@gmail.com>
+ * Copyright 2018 Andrei Heidelbacher <andrei.heidelbacher@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,13 @@
  * limitations under the License.
  */
 
-package org.metanalysis.visibility
+package org.metanalysis.eb.core
 
-import org.metanalysis.core.repository.PersistentRepository
-import org.metanalysis.eb.core.HistoryVisitor
+class DecapsulationSet {
+    data class Entry(
+        val revisionId: String,
+        val description: String
+    )
 
-fun main(args: Array<String>) {
-    val repository = PersistentRepository.load() ?: error("Project not found!")
-    val stats = HistoryVisitor.visit(repository)
-    stats.entries.sortedByDescending { it.value.weight }.forEach { (path, value) ->
-        println("'$path': $value")
-    }
+    val weight: String = 0
 }

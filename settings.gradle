@@ -1,4 +1,4 @@
-rootProject.name = 'metanalysis-visibility'
+rootProject.name = 'metanalysis-eb'
 
-include 'metanalysis-visibility-core'
-include 'metanalysis-visibility-java'
+include 'metanalysis-eb-core'
+include 'metanalysis-eb-java'

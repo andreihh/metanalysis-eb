@@ -1,0 +1,5 @@
+dependencies {
+    api project(':metanalysis-eb-core')
+
+    testImplementation "com.github.andreihh.metanalysis:metanalysis-test:$metanalysis_version"
+}
