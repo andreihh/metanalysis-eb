@@ -20,12 +20,5 @@ data class Decapsulation(
     val fieldId: String,
     val sourceNodeId: String,
     val revisionId: String,
-    private val description: String
-) {
-
-    override fun toString(): String = description
-}
-
-typealias DecapsulationMap = Map<String, List<Decapsulation>>
-
-fun DecapsulationMap.getWeight(): Int = values.sumBy(List<Decapsulation>::size)
+    val message: String
+)

@@ -21,7 +21,7 @@ import org.metanalysis.core.model.SourceNode
 import org.metanalysis.core.model.sourcePath
 import java.util.ServiceLoader
 
-abstract class DecapsulationProcessor {
+abstract class DecapsulationAnalyzer {
     protected abstract fun canProcess(sourcePath: String): Boolean
 
     protected abstract fun getField(project: Project, nodeId: String): String?
@@ -29,18 +29,22 @@ abstract class DecapsulationProcessor {
     protected abstract fun getVisibility(project: Project, nodeId: String): Int
 
     companion object {
-        private val processors =
-            ServiceLoader.load(DecapsulationProcessor::class.java)
+        private val analyzers =
+            ServiceLoader.load(DecapsulationAnalyzer::class.java)
 
-        private fun Project.findProcessor(id: String): DecapsulationProcessor? {
-            val sourcePath = get<SourceNode>(id).sourcePath
-            return processors.find { it.canProcess(sourcePath) }
+        private fun findAnalyzer(
+            project: Project,
+            id: String
+        ): DecapsulationAnalyzer? {
+            val sourcePath = project.get<SourceNode?>(id)?.sourcePath
+                ?: return null
+            return analyzers.find { it.canProcess(sourcePath) }
         }
 
         fun getField(project: Project, nodeId: String): String? =
-            project.findProcessor(nodeId)?.getField(project, nodeId)
+            findAnalyzer(project, nodeId)?.getField(project, nodeId)
 
         fun getVisibility(project: Project, nodeId: String): Int? =
-            project.findProcessor(nodeId)?.getVisibility(project, nodeId)
+            findAnalyzer(project, nodeId)?.getVisibility(project, nodeId)
     }
 }

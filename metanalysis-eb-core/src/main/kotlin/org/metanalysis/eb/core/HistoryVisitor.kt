@@ -34,25 +34,25 @@ class HistoryVisitor private constructor() {
     private val project = Project.empty()
 
     private fun getField(nodeId: String): String? =
-        DecapsulationProcessor.getField(project, nodeId)
+        DecapsulationAnalyzer.getField(project, nodeId)
 
     private fun getVisibility(nodeId: String): Int? =
-        DecapsulationProcessor.getVisibility(project, nodeId)
+        DecapsulationAnalyzer.getVisibility(project, nodeId)
 
     private fun addDecapsulation(
         fieldId: String,
         nodeId: String,
         revisionId: String,
-        description: String
+        message: String
     ) {
-        val new = Decapsulation(fieldId, nodeId, revisionId, description)
+        val new = Decapsulation(fieldId, nodeId, revisionId, message)
         val current = decapsulationsByField[fieldId].orEmpty()
         decapsulationsByField[fieldId] = current + new
     }
 
     private fun visit(edit: AddNode, revisionId: String) {
         for (node in edit.node.walkSourceTree()) {
-            val fieldId = DecapsulationProcessor.getField(project, edit.id)
+            val fieldId = DecapsulationAnalyzer.getField(project, edit.id)
                 ?: continue
             val old = getVisibility(fieldId)
             val new = getVisibility(node.id)
@@ -61,7 +61,7 @@ class HistoryVisitor private constructor() {
                     fieldId = fieldId,
                     nodeId = node.id,
                     revisionId = revisionId,
-                    description = ""
+                    message = "Added accessor with more relaxed visibility!"
                 )
             }
         }
@@ -77,7 +77,7 @@ class HistoryVisitor private constructor() {
                 fieldId = edit.id,
                 nodeId = edit.id,
                 revisionId = revisionId,
-                description = ""
+                message = "Relaxed field visibility!"
             )
         }
     }
@@ -92,7 +92,7 @@ class HistoryVisitor private constructor() {
                 fieldId = fieldId,
                 nodeId = edit.id,
                 revisionId = revisionId,
-                description = ""
+                message = "Relaxed accessor visibility!"
             )
         }
     }
@@ -102,7 +102,7 @@ class HistoryVisitor private constructor() {
         val removedIds = node.walkSourceTree().map(SourceNode::id).toSet()
         for (id in removedIds) {
             decapsulationsByField -= id
-            val field = DecapsulationProcessor.getField(project, id) ?: continue
+            val field = DecapsulationAnalyzer.getField(project, id) ?: continue
             val decapsulations = decapsulationsByField[field] ?: continue
             decapsulationsByField[field] =
                 decapsulations.filter { it.sourceNodeId != id }
@@ -126,15 +126,15 @@ class HistoryVisitor private constructor() {
         }
     }
 
-    private fun aggregate(): Map<String, DecapsulationMap> =
+    private fun aggregate(): Map<String, List<Decapsulation>> =
         decapsulationsByField.entries.groupBy { (id, _) ->
             project.get<Variable>(id).parentId
         }.mapValues { (_, decapsulations) ->
-            decapsulations.map { (k, v) -> k to v }.toMap()
+            decapsulations.flatMap { (_, v) -> v }
         }
 
     companion object {
-        fun visit(repository: Repository): Map<String, DecapsulationMap> {
+        fun visit(repository: Repository): Map<String, List<Decapsulation>> {
             val visitor = HistoryVisitor()
             for (transaction in repository.getHistory()) {
                 visitor.visit(transaction)

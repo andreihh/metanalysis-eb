@@ -22,9 +22,9 @@ import org.metanalysis.core.model.SourceNode
 import org.metanalysis.core.model.Type
 import org.metanalysis.core.model.Variable
 import org.metanalysis.core.model.parentId
-import org.metanalysis.eb.core.DecapsulationProcessor
+import org.metanalysis.eb.core.DecapsulationAnalyzer
 
-class JavaProcessor : DecapsulationProcessor() {
+class JavaAnalyzer : DecapsulationAnalyzer() {
     override fun canProcess(sourcePath: String): Boolean =
         sourcePath.endsWith(".java")
 
@@ -71,14 +71,14 @@ class JavaProcessor : DecapsulationProcessor() {
     }
 
     companion object {
-        private const val PRIVATE_MODIFIER: String = "private"
-        private const val PROTECTED_MODIFIER: String = "protected"
-        private const val PUBLIC_MODIFIER: String = "public"
-        private const val INTERFACE_MODIFIER = "interface"
+        internal const val PRIVATE_MODIFIER: String = "private"
+        internal const val PROTECTED_MODIFIER: String = "protected"
+        internal const val PUBLIC_MODIFIER: String = "public"
+        internal const val INTERFACE_MODIFIER = "interface"
 
-        private const val PRIVATE_LEVEL: Int = 1
-        private const val PACKAGE_LEVEL: Int = 2
-        private const val PROTECTED_LEVEL: Int = 3
-        private const val PUBLIC_LEVEL: Int = 4
+        internal const val PRIVATE_LEVEL: Int = 1
+        internal const val PACKAGE_LEVEL: Int = 2
+        internal const val PROTECTED_LEVEL: Int = 3
+        internal const val PUBLIC_LEVEL: Int = 4
     }
 }

@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-package org.metanalysis.visibility
+package org.metanalysis.eb
 
-import org.metanalysis.core.repository.PersistentRepository
-import org.metanalysis.eb.core.HistoryVisitor
+import org.junit.Test
 
-fun main(args: Array<String>) {
-    val repository = PersistentRepository.load() ?: error("Project not found!")
-    val stats = HistoryVisitor.visit(repository)
-    stats.entries.sortedByDescending { it.value.weight }.forEach { (path, value) ->
-        println("'$path': $value")
+class MainTest {
+    @Test fun `test main`() {
+        println("hello")
     }
 }
