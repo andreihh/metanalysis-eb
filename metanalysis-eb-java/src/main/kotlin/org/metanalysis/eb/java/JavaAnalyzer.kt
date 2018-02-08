@@ -19,6 +19,7 @@ package org.metanalysis.eb.java
 import org.metanalysis.core.model.Function
 import org.metanalysis.core.model.Project
 import org.metanalysis.core.model.SourceNode
+import org.metanalysis.core.model.SourceNode.Companion.ENTITY_SEPARATOR
 import org.metanalysis.core.model.Type
 import org.metanalysis.core.model.Variable
 import org.metanalysis.core.model.parentId
@@ -41,7 +42,8 @@ class JavaAnalyzer : DecapsulationAnalyzer() {
             is Variable -> node.id
             is Function -> {
                 val fieldName = getFieldName(node.signature) ?: return null
-                val field = project[fieldName] as? Variable? ?: return null
+                val fieldId = "${node.parentId}$ENTITY_SEPARATOR$fieldName"
+                val field = project[fieldId] as? Variable? ?: return null
                 field.id
             }
             else -> null
