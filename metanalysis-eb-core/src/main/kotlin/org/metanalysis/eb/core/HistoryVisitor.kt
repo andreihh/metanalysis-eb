@@ -16,65 +16,130 @@
 
 package org.metanalysis.eb.core
 
+import org.metanalysis.core.model.AddNode
+import org.metanalysis.core.model.EditFunction
 import org.metanalysis.core.model.EditVariable
 import org.metanalysis.core.model.Project
 import org.metanalysis.core.model.ProjectEdit
 import org.metanalysis.core.model.RemoveNode
 import org.metanalysis.core.model.SourceNode
+import org.metanalysis.core.model.Variable
+import org.metanalysis.core.model.parentId
 import org.metanalysis.core.model.walkSourceTree
 import org.metanalysis.core.repository.Repository
 import org.metanalysis.core.repository.Transaction
 
 class HistoryVisitor private constructor() {
-    private val decapsulations = hashMapOf<String, DecapsulationSet>()
+    private val decapsulationsByField = hashMapOf<String, List<Decapsulation>>()
     private val project = Project.empty()
 
-    private fun visit(
-        edit: EditVariable,
-        revisionId: String
-    ): DecapsulationSet? = DecapsulationProcessor.updateDecapsulations(
-        project = project,
-        decapsulations = decapsulations[edit.id] ?: DecapsulationSet(),
-        edit = edit,
-        revisionId = revisionId
-    )
+    private fun getField(nodeId: String): String? =
+        DecapsulationProcessor.getField(project, nodeId)
+
+    private fun getVisibility(nodeId: String): Int? =
+        DecapsulationProcessor.getVisibility(project, nodeId)
+
+    private fun addDecapsulation(
+        fieldId: String,
+        nodeId: String,
+        revisionId: String,
+        description: String
+    ) {
+        val new = Decapsulation(fieldId, nodeId, revisionId, description)
+        val current = decapsulationsByField[fieldId].orEmpty()
+        decapsulationsByField[fieldId] = current + new
+    }
+
+    private fun visit(edit: AddNode, revisionId: String) {
+        for (node in edit.node.walkSourceTree()) {
+            val fieldId = DecapsulationProcessor.getField(project, edit.id)
+                ?: continue
+            val old = getVisibility(fieldId)
+            val new = getVisibility(node.id)
+            if (old != null && new != null && old < new) {
+                addDecapsulation(
+                    fieldId = fieldId,
+                    nodeId = node.id,
+                    revisionId = revisionId,
+                    description = ""
+                )
+            }
+        }
+        project.apply(edit)
+    }
+
+    private fun visit(edit: EditVariable, revisionId: String) {
+        val old = getVisibility(edit.id)
+        project.apply(edit)
+        val new = getVisibility(edit.id)
+        if (old != null && new != null && old < new) {
+            addDecapsulation(
+                fieldId = edit.id,
+                nodeId = edit.id,
+                revisionId = revisionId,
+                description = ""
+            )
+        }
+    }
+
+    private fun visit(edit: EditFunction, revisionId: String) {
+        val fieldId = getField(edit.id) ?: return
+        val old = getVisibility(edit.id)
+        project.apply(edit)
+        val new = getVisibility(edit.id)
+        if (old != null && new != null && old < new) {
+            addDecapsulation(
+                fieldId = fieldId,
+                nodeId = edit.id,
+                revisionId = revisionId,
+                description = ""
+            )
+        }
+    }
 
     private fun visit(edit: RemoveNode) {
-        val removedNode = project.get<SourceNode>(edit.id)
-        val removedIds = removedNode.walkSourceTree().map(SourceNode::id)
+        val node = project.get<SourceNode>(edit.id)
+        val removedIds = node.walkSourceTree().map(SourceNode::id).toSet()
         for (id in removedIds) {
-            decapsulations -= id
+            decapsulationsByField -= id
+            val field = DecapsulationProcessor.getField(project, id) ?: continue
+            val decapsulations = decapsulationsByField[field] ?: continue
+            decapsulationsByField[field] =
+                decapsulations.filter { it.sourceNodeId != id }
         }
+        project.apply(edit)
     }
 
     private fun visit(edit: ProjectEdit, revisionId: String) {
         when (edit) {
+            is AddNode -> visit(edit, revisionId)
+            is EditFunction -> visit(edit, revisionId)
+            is EditVariable -> visit(edit, revisionId)
             is RemoveNode -> visit(edit)
-            is EditVariable -> {
-                val newDecapsulations = visit(edit, revisionId)
-                if (newDecapsulations != null) {
-                    decapsulations[edit.id] = newDecapsulations
-                } else {
-                    decapsulations -= edit.id
-                }
-            }
+            else -> project.apply(edit)
         }
     }
 
     private fun visit(transaction: Transaction) {
         for (edit in transaction.edits) {
             visit(edit, transaction.id)
-            project.apply(edit)
         }
     }
 
+    private fun aggregate(): Map<String, DecapsulationMap> =
+        decapsulationsByField.entries.groupBy { (id, _) ->
+            project.get<Variable>(id).parentId
+        }.mapValues { (_, decapsulations) ->
+            decapsulations.map { (k, v) -> k to v }.toMap()
+        }
+
     companion object {
-        fun visit(repository: Repository): Map<String, DecapsulationSet> {
+        fun visit(repository: Repository): Map<String, DecapsulationMap> {
             val visitor = HistoryVisitor()
             for (transaction in repository.getHistory()) {
                 visitor.visit(transaction)
             }
-            return visitor.decapsulations
+            return visitor.aggregate()
         }
     }
 }

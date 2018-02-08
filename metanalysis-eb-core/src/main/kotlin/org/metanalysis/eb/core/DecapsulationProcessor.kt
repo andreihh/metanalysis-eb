@@ -16,41 +16,31 @@
 
 package org.metanalysis.eb.core
 
-import org.metanalysis.core.model.EditVariable
 import org.metanalysis.core.model.Project
-import org.metanalysis.core.model.Variable
+import org.metanalysis.core.model.SourceNode
 import org.metanalysis.core.model.sourcePath
 import java.util.ServiceLoader
 
 abstract class DecapsulationProcessor {
     protected abstract fun canProcess(sourcePath: String): Boolean
 
-    protected abstract fun updateDecapsulations(
-        project: Project,
-        decapsulations: DecapsulationSet,
-        edit: EditVariable,
-        revisionId: String
-    ): DecapsulationSet
+    protected abstract fun getField(project: Project, nodeId: String): String?
+
+    protected abstract fun getVisibility(project: Project, nodeId: String): Int
 
     companion object {
         private val processors =
             ServiceLoader.load(DecapsulationProcessor::class.java)
 
-        fun updateDecapsulations(
-            project: Project,
-            decapsulations: DecapsulationSet,
-            edit: EditVariable,
-            revisionId: String
-        ): DecapsulationSet? {
-            val sourcePath = project.get<Variable>(edit.id).sourcePath
-            val processor = processors.find { it.canProcess(sourcePath) }
-                ?: return null
-            return processor.updateDecapsulations(
-                project = project,
-                decapsulations = decapsulations,
-                edit = edit,
-                revisionId = revisionId
-            )
+        private fun Project.findProcessor(id: String): DecapsulationProcessor? {
+            val sourcePath = get<SourceNode>(id).sourcePath
+            return processors.find { it.canProcess(sourcePath) }
         }
+
+        fun getField(project: Project, nodeId: String): String? =
+            project.findProcessor(nodeId)?.getField(project, nodeId)
+
+        fun getVisibility(project: Project, nodeId: String): Int? =
+            project.findProcessor(nodeId)?.getVisibility(project, nodeId)
     }
 }

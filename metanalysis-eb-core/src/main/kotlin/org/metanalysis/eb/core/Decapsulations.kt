@@ -16,24 +16,16 @@
 
 package org.metanalysis.eb.core
 
-import org.metanalysis.core.model.Project
-import org.metanalysis.core.model.SourceNode
+data class Decapsulation(
+    val fieldId: String,
+    val sourceNodeId: String,
+    val revisionId: String,
+    private val description: String
+) {
 
-import java.util.ServiceLoader
-
-interface VisibilityAnalyzer {
-    companion object {
-        private val analyzers =
-                ServiceLoader.load(VisibilityAnalyzer::class.java)
-
-        private val String.fileName: String
-            get() = substringAfterLast(SourceNode.PATH_SEPARATOR)
-
-        fun getAnalyzer(path: String): VisibilityAnalyzer? =
-                analyzers.firstOrNull { path.fileName.matches(it.pattern) }
-    }
-
-    val pattern: Regex
-
-    fun getVisibility(project: Project, id: String): Int
+    override fun toString(): String = description
 }
+
+typealias DecapsulationMap = Map<String, List<Decapsulation>>
+
+fun DecapsulationMap.getWeight(): Int = values.sumBy(List<Decapsulation>::size)

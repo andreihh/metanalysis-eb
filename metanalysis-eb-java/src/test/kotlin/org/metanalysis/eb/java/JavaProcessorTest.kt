@@ -17,25 +17,15 @@
 package org.metanalysis.eb.java
 
 import org.junit.Test
-
 import org.metanalysis.core.model.Project
+import org.metanalysis.eb.core.DecapsulationProcessor
 import org.metanalysis.test.core.model.project
-import org.metanalysis.eb.java.JavaVisibilityAnalyzer.Companion.PACKAGE_LEVEL
-import org.metanalysis.eb.java.JavaVisibilityAnalyzer.Companion.PRIVATE_LEVEL
-import org.metanalysis.eb.java.JavaVisibilityAnalyzer.Companion.PRIVATE_MODIFIER
-import org.metanalysis.eb.java.JavaVisibilityAnalyzer.Companion.PROTECTED_LEVEL
-import org.metanalysis.eb.java.JavaVisibilityAnalyzer.Companion.PROTECTED_MODIFIER
-import org.metanalysis.eb.java.JavaVisibilityAnalyzer.Companion.PUBLIC_LEVEL
-import org.metanalysis.eb.java.JavaVisibilityAnalyzer.Companion.PUBLIC_MODIFIER
-
 import kotlin.test.assertEquals
 
-class JavaVisibilityAnalyzerTest {
-    private val analyzer = JavaVisibilityAnalyzer()
-
+class JavaProcessorTest {
     private fun getProjectWithType(
-            className: String,
-            visibilityModifier: String? = null
+        className: String,
+        visibilityModifier: String? = null
     ): Project = project {
         sourceUnit("$className.java") {
             type(className) {
@@ -46,12 +36,13 @@ class JavaVisibilityAnalyzerTest {
         }
     }
 
-    @Test fun `test private visibility`() {
+    @Test
+    fun `test private visibility`() {
         val name = "Main"
-        val project = getProjectWithType(name, PRIVATE_MODIFIER)
+        val project = getProjectWithType(name, "private")
         val id = "$name.java:$name"
-        val expectedLevel = PRIVATE_LEVEL
-        val actualLevel = analyzer.getVisibility(project, id)
+        val expectedLevel = 1
+        val actualLevel = DecapsulationProcessor.getVisibility(project, id)
         assertEquals(expectedLevel, actualLevel)
     }
 
@@ -59,26 +50,26 @@ class JavaVisibilityAnalyzerTest {
         val name = "Main"
         val project = getProjectWithType(name)
         val id = "$name.java:$name"
-        val expectedLevel = PACKAGE_LEVEL
-        val actualLevel = analyzer.getVisibility(project, id)
+        val expectedLevel = 2
+        val actualLevel = DecapsulationProcessor.getVisibility(project, id)
         assertEquals(expectedLevel, actualLevel)
     }
 
     @Test fun `test protected visibility`() {
         val name = "Main"
-        val project = getProjectWithType(name, PROTECTED_MODIFIER)
+        val project = getProjectWithType(name, "protected")
         val id = "$name.java:$name"
-        val expectedLevel = PROTECTED_LEVEL
-        val actualLevel = analyzer.getVisibility(project, id)
+        val expectedLevel = 3
+        val actualLevel = DecapsulationProcessor.getVisibility(project, id)
         assertEquals(expectedLevel, actualLevel)
     }
 
     @Test fun `test public visibility`() {
         val name = "Main"
-        val project = getProjectWithType(name, PUBLIC_MODIFIER)
+        val project = getProjectWithType(name, "public")
         val id = "$name.java:$name"
-        val expectedLevel = PUBLIC_LEVEL
-        val actualLevel = analyzer.getVisibility(project, id)
+        val expectedLevel = 4
+        val actualLevel = DecapsulationProcessor.getVisibility(project, id)
         assertEquals(expectedLevel, actualLevel)
     }
 }
