@@ -83,11 +83,11 @@ class HistoryVisitor private constructor() {
     }
 
     private fun visit(edit: EditFunction, revisionId: String) {
-        val fieldId = getField(edit.id) ?: return
+        val fieldId = getField(edit.id)
         val old = getVisibility(edit.id)
         project.apply(edit)
         val new = getVisibility(edit.id)
-        if (old != null && new != null && old < new) {
+        if (fieldId != null && old != null && new != null && old < new) {
             addDecapsulation(
                 fieldId = fieldId,
                 nodeId = edit.id,
