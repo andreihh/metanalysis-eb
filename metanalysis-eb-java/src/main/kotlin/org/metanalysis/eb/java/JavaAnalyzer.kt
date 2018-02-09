@@ -72,11 +72,20 @@ class JavaAnalyzer : DecapsulationAnalyzer() {
         }
     }
 
+    override fun isConstant(project: Project, nodeId: String): Boolean {
+        val node = project[nodeId] as? Variable? ?: return false
+        val modifiers = node.modifiers
+        return (STATIC_MODIFIER in modifiers && FINAL_MODIFIER in modifiers)
+            || project[node.parentId].isInterface
+    }
+
     companion object {
         internal const val PRIVATE_MODIFIER: String = "private"
         internal const val PROTECTED_MODIFIER: String = "protected"
         internal const val PUBLIC_MODIFIER: String = "public"
-        internal const val INTERFACE_MODIFIER = "interface"
+        internal const val INTERFACE_MODIFIER: String = "interface"
+        internal const val STATIC_MODIFIER: String = "static"
+        internal const val FINAL_MODIFIER: String = "final"
 
         internal const val PRIVATE_LEVEL: Int = 1
         internal const val PACKAGE_LEVEL: Int = 2

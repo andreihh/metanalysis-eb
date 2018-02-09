@@ -28,6 +28,8 @@ abstract class DecapsulationAnalyzer {
 
     protected abstract fun getVisibility(project: Project, nodeId: String): Int
 
+    protected abstract fun isConstant(project: Project, nodeId: String): Boolean
+
     companion object {
         private val analyzers =
             ServiceLoader.load(DecapsulationAnalyzer::class.java)
@@ -46,5 +48,8 @@ abstract class DecapsulationAnalyzer {
 
         fun getVisibility(project: Project, nodeId: String): Int? =
             findAnalyzer(project, nodeId)?.getVisibility(project, nodeId)
+
+        fun isConstant(project: Project, nodeId: String): Boolean =
+            findAnalyzer(project, nodeId)?.isConstant(project, nodeId) == true
     }
 }

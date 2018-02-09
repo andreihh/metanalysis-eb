@@ -30,14 +30,17 @@ import org.metanalysis.core.repository.Repository
 import org.metanalysis.core.repository.Transaction
 
 class HistoryVisitor private constructor() {
-    private val decapsulationsByField = hashMapOf<String, List<Decapsulation>>()
     private val project = Project.empty()
+    private val decapsulationsByField = hashMapOf<String, List<Decapsulation>>()
 
     private fun getField(nodeId: String): String? =
         DecapsulationAnalyzer.getField(project, nodeId)
 
     private fun getVisibility(nodeId: String): Int? =
         DecapsulationAnalyzer.getVisibility(project, nodeId)
+
+    private fun isConstant(nodeId: String): Boolean =
+        DecapsulationAnalyzer.isConstant(project, nodeId)
 
     private fun addDecapsulation(
         fieldId: String,
@@ -126,20 +129,27 @@ class HistoryVisitor private constructor() {
         }
     }
 
-    private fun aggregate(): Map<String, List<Decapsulation>> =
-        decapsulationsByField.entries.groupBy { (id, _) ->
-            project.get<Variable>(id).parentId
-        }.mapValues { (_, decapsulations) ->
-            decapsulations.flatMap { (_, v) -> v }
-        }
+    private fun aggregate(
+        ignoreConstants: Boolean
+    ): Map<String, List<Decapsulation>> =
+        decapsulationsByField
+            .filterKeys { !ignoreConstants || !isConstant(it) }
+            .entries
+            .groupBy { (id, _) -> project.get<Variable>(id).parentId }
+            .mapValues { (_, decapsulations) ->
+                decapsulations.flatMap { (_, v) -> v }
+            }
 
     companion object {
-        fun visit(repository: Repository): Map<String, List<Decapsulation>> {
+        fun visit(
+            repository: Repository,
+            ignoreConstants: Boolean = false
+        ): Map<String, List<Decapsulation>> {
             val visitor = HistoryVisitor()
             for (transaction in repository.getHistory()) {
                 visitor.visit(transaction)
             }
-            return visitor.aggregate()
+            return visitor.aggregate(ignoreConstants)
         }
     }
 }

@@ -21,8 +21,11 @@ import org.metanalysis.core.repository.PersistentRepository
 import org.metanalysis.eb.core.HistoryVisitor
 
 fun main(args: Array<String>) {
+    val ignoreConstants = "--ignore-constants" in args
     val repository = PersistentRepository.load() ?: error("Project not found!")
-    val decapsulationsByParent = HistoryVisitor.visit(repository)
+    val decapsulationsByParent =
+        HistoryVisitor.visit(repository, ignoreConstants)
+
     decapsulationsByParent.entries
         .sortedByDescending { it.value.size }
         .forEach { (parentId, decapsulationsInParent) ->
