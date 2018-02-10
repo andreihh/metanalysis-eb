@@ -19,8 +19,8 @@ package org.metanalysis.eb.core
 import org.metanalysis.core.model.AddNode
 import org.metanalysis.core.model.EditFunction
 import org.metanalysis.core.model.EditVariable
+import org.metanalysis.core.model.Function
 import org.metanalysis.core.model.Project
-import org.metanalysis.core.model.ProjectEdit
 import org.metanalysis.core.model.RemoveNode
 import org.metanalysis.core.model.SourceNode
 import org.metanalysis.core.model.Variable
@@ -53,79 +53,99 @@ class HistoryVisitor private constructor() {
         decapsulationsByField[fieldId] = current + new
     }
 
-    private fun visit(edit: AddNode, revisionId: String) {
+    private fun visit(edit: AddNode): Set<String> {
+        val editedIds = hashSetOf<String>()
         for (node in edit.node.walkSourceTree()) {
-            val fieldId = DecapsulationAnalyzer.getField(project, edit.id)
-                ?: continue
-            val old = getVisibility(fieldId)
-            val new = getVisibility(node.id)
-            if (old != null && new != null && old < new) {
+            if (node is Variable) {
+                decapsulationsByField[node.id] = emptyList()
+                editedIds += node.id
+            } else if (node is Function) {
+                editedIds += node.id
+            }
+        }
+        return editedIds
+    }
+
+    private fun visit(edit: RemoveNode): Set<String> {
+        val removedIds = hashSetOf<String>()
+        val removedNode = project.get<SourceNode>(edit.id)
+        for (node in removedNode.walkSourceTree()) {
+            decapsulationsByField -= node.id
+            removedIds += node.id
+        }
+        return removedIds
+    }
+
+    private fun visit(transaction: Transaction): Set<String> {
+        val editedIds = hashSetOf<String>()
+        for (edit in transaction.edits) {
+            when (edit) {
+                is AddNode -> editedIds += visit(edit)
+                is RemoveNode -> editedIds -= visit(edit)
+                is EditFunction -> editedIds += edit.id
+                is EditVariable -> editedIds += edit.id
+            }
+        }
+        return editedIds
+    }
+
+    private fun getVisibility(ids: Set<String>): Map<String, Int> {
+        val visibility = hashMapOf<String, Int>()
+        for (id in ids) {
+            visibility[id] = getVisibility(id) ?: continue
+            val fieldId = getField(id) ?: continue
+            visibility[fieldId] = getVisibility(fieldId) ?: continue
+        }
+        return visibility
+    }
+
+    private fun analyze(transaction: Transaction) {
+        val editedIds = visit(transaction)
+        val oldVisibility = getVisibility(editedIds)
+        project.apply(transaction.edits)
+        val newVisibility = getVisibility(editedIds)
+
+        fun analyze(variable: Variable) {
+            val old = oldVisibility[variable.id] ?: return
+            val new = newVisibility[variable.id] ?: return
+            if (new > old) {
                 addDecapsulation(
-                    fieldId = fieldId,
-                    nodeId = node.id,
-                    revisionId = revisionId,
-                    message = "Added accessor with more relaxed visibility!"
+                    fieldId = variable.id,
+                    nodeId = variable.id,
+                    revisionId = transaction.id,
+                    message = "Relaxed field visibility!"
                 )
             }
         }
-        project.apply(edit)
-    }
 
-    private fun visit(edit: EditVariable, revisionId: String) {
-        val old = getVisibility(edit.id)
-        project.apply(edit)
-        val new = getVisibility(edit.id)
-        if (old != null && new != null && old < new) {
-            addDecapsulation(
-                fieldId = edit.id,
-                nodeId = edit.id,
-                revisionId = revisionId,
-                message = "Relaxed field visibility!"
-            )
+        fun analyze(function: Function) {
+            val fieldId = getField(function.id) ?: return
+            val fieldOld = oldVisibility[fieldId] ?: return
+            val old = oldVisibility[function.id]
+            val new = newVisibility[function.id] ?: return
+            if (old == null && new > fieldOld) {
+                addDecapsulation(
+                    fieldId = fieldId,
+                    nodeId = function.id,
+                    revisionId = transaction.id,
+                    message = "Added accessor with more relaxed visibility!"
+                )
+            } else if (old != null && new > old) {
+                addDecapsulation(
+                    fieldId = fieldId,
+                    nodeId = function.id,
+                    revisionId = transaction.id,
+                    message = "Relaxed accessor visibility!"
+                )
+            }
         }
-    }
 
-    private fun visit(edit: EditFunction, revisionId: String) {
-        val fieldId = getField(edit.id)
-        val old = getVisibility(edit.id)
-        project.apply(edit)
-        val new = getVisibility(edit.id)
-        if (fieldId != null && old != null && new != null && old < new) {
-            addDecapsulation(
-                fieldId = fieldId,
-                nodeId = edit.id,
-                revisionId = revisionId,
-                message = "Relaxed accessor visibility!"
-            )
-        }
-    }
-
-    private fun visit(edit: RemoveNode) {
-        val node = project.get<SourceNode>(edit.id)
-        val removedIds = node.walkSourceTree().map(SourceNode::id).toSet()
-        for (id in removedIds) {
-            decapsulationsByField -= id
-            val field = DecapsulationAnalyzer.getField(project, id) ?: continue
-            val decapsulations = decapsulationsByField[field] ?: continue
-            decapsulationsByField[field] =
-                decapsulations.filter { it.sourceNodeId != id }
-        }
-        project.apply(edit)
-    }
-
-    private fun visit(edit: ProjectEdit, revisionId: String) {
-        when (edit) {
-            is AddNode -> visit(edit, revisionId)
-            is EditFunction -> visit(edit, revisionId)
-            is EditVariable -> visit(edit, revisionId)
-            is RemoveNode -> visit(edit)
-            else -> project.apply(edit)
-        }
-    }
-
-    private fun visit(transaction: Transaction) {
-        for (edit in transaction.edits) {
-            visit(edit, transaction.id)
+        for (id in editedIds) {
+            val node = project[id]
+            when (node) {
+                is Variable -> analyze(node)
+                is Function -> analyze(node)
+            }
         }
     }
 
@@ -147,7 +167,7 @@ class HistoryVisitor private constructor() {
         ): Map<String, List<Decapsulation>> {
             val visitor = HistoryVisitor()
             for (transaction in repository.getHistory()) {
-                visitor.visit(transaction)
+                visitor.analyze(transaction)
             }
             return visitor.aggregate(ignoreConstants)
         }
