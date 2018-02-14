@@ -17,7 +17,6 @@
 package org.metanalysis.eb.core
 
 import org.metanalysis.core.model.Project
-import org.metanalysis.core.model.SourceNode
 import org.metanalysis.core.model.sourcePath
 import java.util.ServiceLoader
 
@@ -38,8 +37,7 @@ abstract class DecapsulationAnalyzer {
             project: Project,
             id: String
         ): DecapsulationAnalyzer? {
-            val sourcePath = project.get<SourceNode?>(id)?.sourcePath
-                ?: return null
+            val sourcePath = project[id]?.sourcePath ?: return null
             return analyzers.find { it.canProcess(sourcePath) }
         }
 
