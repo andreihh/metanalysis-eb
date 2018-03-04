@@ -23,13 +23,14 @@ import org.metanalysis.core.model.Function
 import org.metanalysis.core.model.Project
 import org.metanalysis.core.model.RemoveNode
 import org.metanalysis.core.model.SourceNode
+import org.metanalysis.core.model.SourceUnit
+import org.metanalysis.core.model.Type
 import org.metanalysis.core.model.Variable
-import org.metanalysis.core.model.parentId
 import org.metanalysis.core.model.walkSourceTree
 import org.metanalysis.core.repository.Repository
 import org.metanalysis.core.repository.Transaction
 
-class HistoryVisitor private constructor() {
+class HistoryVisitor private constructor(private val ignoreConstants: Boolean) {
     private val project = Project.empty()
     private val decapsulationsByField = hashMapOf<String, List<Decapsulation>>()
 
@@ -112,7 +113,7 @@ class HistoryVisitor private constructor() {
                 addDecapsulation(
                     fieldId = variable.id,
                     nodeId = variable.id,
-                    revisionId = transaction.id,
+                    revisionId = transaction.revisionId,
                     message = "Relaxed field visibility!"
                 )
             }
@@ -127,14 +128,14 @@ class HistoryVisitor private constructor() {
                 addDecapsulation(
                     fieldId = fieldId,
                     nodeId = function.id,
-                    revisionId = transaction.id,
+                    revisionId = transaction.revisionId,
                     message = "Added accessor with more relaxed visibility!"
                 )
             } else if (old != null && new > old) {
                 addDecapsulation(
                     fieldId = fieldId,
                     nodeId = function.id,
-                    revisionId = transaction.id,
+                    revisionId = transaction.revisionId,
                     message = "Relaxed accessor visibility!"
                 )
             }
@@ -149,27 +150,62 @@ class HistoryVisitor private constructor() {
         }
     }
 
-    private fun aggregate(
-        ignoreConstants: Boolean
-    ): Map<String, List<Decapsulation>> =
-        decapsulationsByField
-            .filterKeys { !ignoreConstants || !isConstant(it) }
-            .entries
-            .groupBy { (id, _) -> project.get<Variable>(id).parentId }
-            .mapValues { (_, decapsulations) ->
-                decapsulations.flatMap { (_, v) -> v }
+    private fun aggregate(variable: Variable): FieldReport {
+        val decapsulations =
+            if (ignoreConstants && isConstant(variable.id)) emptyList()
+            else decapsulationsByField[variable.id].orEmpty()
+        return FieldReport(variable.name, decapsulations)
+    }
+
+    private fun aggregate(type: Type): TypeReport {
+        val fields = arrayListOf<FieldReport>()
+        val types = arrayListOf<TypeReport>()
+        for (member in type.members) {
+            if (member is Variable) {
+                fields += aggregate(member)
             }
+            if (member is Type) {
+                types += aggregate(member)
+            }
+        }
+        fields.sortByDescending(FieldReport::value)
+        types.sortByDescending(TypeReport::value)
+        return TypeReport(type.name, fields, types)
+    }
+
+    private fun aggregate(unit: SourceUnit): FileReport {
+        val fields = arrayListOf<FieldReport>()
+        val types = arrayListOf<TypeReport>()
+        for (entity in unit.entities) {
+            if (entity is Variable) {
+                fields += aggregate(entity)
+            }
+            if (entity is Type) {
+                types += aggregate(entity)
+            }
+        }
+        fields.sortByDescending(FieldReport::value)
+        types.sortByDescending(TypeReport::value)
+        return FileReport(unit.path, fields, types)
+    }
+
+    private fun aggregate(): Report {
+        val fileReports = arrayListOf<FileReport>()
+        for (unit in project.sources) {
+            fileReports += aggregate(unit)
+        }
+        fileReports.sortByDescending(FileReport::value)
+        return Report(fileReports)
+    }
 
     companion object {
-        fun visit(
-            repository: Repository,
+        fun analyze(
+            history: Iterable<Transaction>,
             ignoreConstants: Boolean = false
-        ): Map<String, List<Decapsulation>> {
-            val visitor = HistoryVisitor()
-            for (transaction in repository.getHistory()) {
-                visitor.analyze(transaction)
-            }
-            return visitor.aggregate(ignoreConstants)
+        ): Report {
+            val visitor = HistoryVisitor(ignoreConstants)
+            history.forEach(visitor::analyze)
+            return visitor.aggregate()
         }
     }
 }

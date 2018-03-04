@@ -16,34 +16,15 @@
 
 package org.metanalysis.eb
 
-import org.metanalysis.core.model.SourceNode.Companion.ENTITY_SEPARATOR
 import org.metanalysis.core.repository.PersistentRepository
-import org.metanalysis.eb.core.HistoryVisitor
+import org.metanalysis.core.serialization.JsonModule
+import org.metanalysis.eb.core.HistoryVisitor.Companion.analyze
 
 fun main(args: Array<String>) {
-    val ignoreConstants = "--ignore-constants" in args
-    val repository = PersistentRepository.load() ?: error("Project not found!")
-    val decapsulationsByParent =
-        HistoryVisitor.visit(repository, ignoreConstants)
+    val repository = PersistentRepository.load()
+        ?: error("Repository not found!")
 
-    decapsulationsByParent.entries
-        .sortedByDescending { it.value.size }
-        .forEach { (parentId, decapsulationsInParent) ->
-            println("'$parentId' (${decapsulationsInParent.size}):")
-            val decapsulationsByField =
-                decapsulationsInParent.groupBy { (fieldId, _, _, _) -> fieldId }
-            decapsulationsByField.forEach { fieldId, decapsulations ->
-                val fieldName =
-                    fieldId.removePrefix("$parentId$ENTITY_SEPARATOR")
-                println("- $fieldName:")
-                decapsulations.forEach { (_, nodeId, revisionId, message) ->
-                    val nodeName =
-                        nodeId.removePrefix("$parentId$ENTITY_SEPARATOR")
-                    println("  - revision: $revisionId")
-                    println("  - node: $nodeName")
-                    println("  - message: $message")
-                    println()
-                }
-            }
-        }
+    val ignoreConstants = "--ignore-constants" in args
+    val report = analyze(repository.getHistory(), ignoreConstants)
+    JsonModule.serialize(System.out, report.files)
 }
