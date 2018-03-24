@@ -22,14 +22,14 @@ import org.metanalysis.core.model.EditVariable
 import org.metanalysis.core.model.Function
 import org.metanalysis.core.model.Project
 import org.metanalysis.core.model.RemoveNode
+import org.metanalysis.core.model.SourceFile
 import org.metanalysis.core.model.SourceNode
-import org.metanalysis.core.model.SourceUnit
 import org.metanalysis.core.model.Type
 import org.metanalysis.core.model.Variable
 import org.metanalysis.core.model.walkSourceTree
 import org.metanalysis.core.repository.Transaction
 
-class HistoryVisitor private constructor(private val ignoreConstants: Boolean) {
+class HistoryAnalyzer(private val ignoreConstants: Boolean) {
     private val project = Project.empty()
     private val decapsulationsByField = hashMapOf<String, List<Decapsulation>>()
 
@@ -158,34 +158,34 @@ class HistoryVisitor private constructor(private val ignoreConstants: Boolean) {
 
     private fun aggregate(type: Type): TypeReport {
         val fields = arrayListOf<FieldReport>()
-        val types = arrayListOf<TypeReport>()
+        val children = arrayListOf<TypeReport>()
         for (member in type.members) {
             if (member is Variable) {
                 fields += aggregate(member)
             }
             if (member is Type) {
-                types += aggregate(member)
+                children += aggregate(member)
             }
         }
         fields.sortByDescending(FieldReport::value)
-        types.sortByDescending(TypeReport::value)
-        return TypeReport(type.name, fields, types)
+        children.sortByDescending(TypeReport::value)
+        return TypeReport(type.name, fields, children)
     }
 
-    private fun aggregate(unit: SourceUnit): FileReport {
+    private fun aggregate(unit: SourceFile): FileReport {
         val fields = arrayListOf<FieldReport>()
-        val types = arrayListOf<TypeReport>()
+        val children = arrayListOf<TypeReport>()
         for (entity in unit.entities) {
             if (entity is Variable) {
                 fields += aggregate(entity)
             }
             if (entity is Type) {
-                types += aggregate(entity)
+                children += aggregate(entity)
             }
         }
         fields.sortByDescending(FieldReport::value)
-        types.sortByDescending(TypeReport::value)
-        return FileReport(unit.path, fields, types)
+        children.sortByDescending(TypeReport::value)
+        return FileReport(unit.path, fields, children)
     }
 
     private fun aggregate(): Report {
@@ -195,14 +195,8 @@ class HistoryVisitor private constructor(private val ignoreConstants: Boolean) {
         return Report(fileReports)
     }
 
-    companion object {
-        fun analyze(
-            history: Iterable<Transaction>,
-            ignoreConstants: Boolean = false
-        ): Report {
-            val visitor = HistoryVisitor(ignoreConstants)
-            history.forEach(visitor::analyze)
-            return visitor.aggregate()
-        }
+    fun analyze(history: Iterable<Transaction>): Report {
+        history.forEach(::analyze)
+        return aggregate()
     }
 }

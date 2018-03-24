@@ -17,16 +17,14 @@
 package org.metanalysis.eb
 
 import org.metanalysis.core.repository.PersistentRepository
-import org.metanalysis.core.repository.Repository
 import org.metanalysis.core.serialization.JsonModule
-import org.metanalysis.eb.core.HistoryVisitor.Companion.analyze
-
-private fun loadRepository(): Repository =
-    PersistentRepository.load() ?: error("Repository not found!")
+import org.metanalysis.eb.core.HistoryAnalyzer
 
 fun main(args: Array<String>) {
     val ignoreConstants = "--ignore-constants" in args
-    val repository = loadRepository()
-    val report = analyze(repository.getHistory(), ignoreConstants)
+    val analyzer = HistoryAnalyzer(ignoreConstants)
+    val repository = PersistentRepository.load()
+        ?: error("Repository not found!")
+    val report = analyzer.analyze(repository.getHistory())
     JsonModule.serialize(System.out, report.files)
 }

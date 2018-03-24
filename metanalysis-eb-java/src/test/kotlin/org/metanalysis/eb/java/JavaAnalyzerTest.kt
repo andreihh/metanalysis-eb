@@ -34,7 +34,7 @@ class JavaAnalyzerTest {
         className: String,
         modifier: String? = null
     ): Project = project {
-        sourceUnit("$className.java") {
+        sourceFile("$className.java") {
             type(className) {
                 if (modifier != null) {
                     modifiers(modifier)
@@ -44,7 +44,7 @@ class JavaAnalyzerTest {
     }
 
     private fun getProjectWithInterface(className: String): Project = project {
-        sourceUnit("$className.java") {
+        sourceFile("$className.java") {
             type(className) {
                 modifiers("interface")
 
