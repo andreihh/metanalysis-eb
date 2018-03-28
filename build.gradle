@@ -2,7 +2,8 @@ buildscript {
     ext {
         kotlin_version = '1.2.31'
         junit_version = '4.12'
-        metanalysis_version = '0.2.5'
+        picocli_version = '3.0.0-alpha-2'
+        metanalysis_version = '0.2.6'
     }
 
     repositories {
@@ -67,6 +68,7 @@ mainClassName = 'org.metanalysis.eb.MainKt'
 
 dependencies {
     implementation project(':metanalysis-eb-core')
+    implementation "info.picocli:picocli:$picocli_version"
     runtimeOnly project(':metanalysis-eb-java')
 }
 

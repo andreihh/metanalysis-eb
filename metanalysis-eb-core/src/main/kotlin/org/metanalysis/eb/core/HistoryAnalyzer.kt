@@ -22,16 +22,18 @@ import org.metanalysis.core.model.EditVariable
 import org.metanalysis.core.model.Function
 import org.metanalysis.core.model.Project
 import org.metanalysis.core.model.RemoveNode
-import org.metanalysis.core.model.SourceFile
 import org.metanalysis.core.model.SourceNode
-import org.metanalysis.core.model.Type
 import org.metanalysis.core.model.Variable
+import org.metanalysis.core.model.sourcePath
 import org.metanalysis.core.model.walkSourceTree
 import org.metanalysis.core.repository.Transaction
 
 class HistoryAnalyzer(private val ignoreConstants: Boolean) {
     private val project = Project.empty()
     private val decapsulationsByField = hashMapOf<String, List<Decapsulation>>()
+
+    private fun getSourcePath(id: String): String =
+        project.get<SourceNode>(id).sourcePath
 
     private fun getField(nodeId: String): String? =
         DecapsulationAnalyzer.getField(project, nodeId)
@@ -149,54 +151,39 @@ class HistoryAnalyzer(private val ignoreConstants: Boolean) {
         }
     }
 
-    private fun aggregate(variable: Variable): FieldReport {
-        val decapsulations =
-            if (ignoreConstants && isConstant(variable.id)) emptyList()
-            else decapsulationsByField[variable.id].orEmpty()
-        return FieldReport(variable.name, decapsulations)
-    }
-
-    private fun aggregate(type: Type): TypeReport {
-        val fields = arrayListOf<FieldReport>()
-        val children = arrayListOf<TypeReport>()
-        for (member in type.members) {
-            if (member is Variable) {
-                fields += aggregate(member)
-            }
-            if (member is Type) {
-                children += aggregate(member)
-            }
-        }
-        fields.sortByDescending(FieldReport::value)
-        children.sortByDescending(TypeReport::value)
-        return TypeReport(type.name, fields, children)
-    }
-
-    private fun aggregate(unit: SourceFile): FileReport {
-        val fields = arrayListOf<FieldReport>()
-        val children = arrayListOf<TypeReport>()
-        for (entity in unit.entities) {
-            if (entity is Variable) {
-                fields += aggregate(entity)
-            }
-            if (entity is Type) {
-                children += aggregate(entity)
-            }
-        }
-        fields.sortByDescending(FieldReport::value)
-        children.sortByDescending(TypeReport::value)
-        return FileReport(unit.path, fields, children)
-    }
-
-    private fun aggregate(): Report {
-        val fileReports = project.sources
-            .map(::aggregate)
-            .sortedByDescending(FileReport::value)
-        return Report(fileReports)
-    }
+    private fun getDecapsulations(fieldId: String): List<Decapsulation> =
+        if (ignoreConstants && isConstant(fieldId)) emptyList()
+        else decapsulationsByField[fieldId].orEmpty()
 
     fun analyze(history: Iterable<Transaction>): Report {
         history.forEach(::analyze)
-        return aggregate()
+        val fieldsByFile = decapsulationsByField.keys.groupBy(::getSourcePath)
+        val fileReports = fieldsByFile.map { (path, fields) ->
+            val fieldReports = fields.map { id ->
+                FieldReport(id, getDecapsulations(id))
+            }.sortedByDescending(FieldReport::value)
+            FileReport(path, fieldReports)
+        }.sortedByDescending(FileReport::value)
+        return Report(fileReports)
+    }
+
+    data class Report(val files: List<FileReport>)
+
+    data class FileReport(
+        val file: String,
+        val fields: List<FieldReport>
+    ) {
+        val category: String = "SOLID Breakers"
+        val name: String = "Encapsulation Breakers"
+
+        val value: Int = fields.sumBy(FieldReport::value)
+    }
+
+    data class FieldReport(
+        val id: String,
+        val decapsulations: List<Decapsulation>
+    ) {
+
+        val value: Int = decapsulations.size
     }
 }

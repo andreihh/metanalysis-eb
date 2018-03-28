@@ -19,12 +19,44 @@ package org.metanalysis.eb
 import org.metanalysis.core.repository.PersistentRepository
 import org.metanalysis.core.serialization.JsonModule
 import org.metanalysis.eb.core.HistoryAnalyzer
+import picocli.CommandLine
+import picocli.CommandLine.Command
+import picocli.CommandLine.ExecutionException
+import picocli.CommandLine.Option
+import picocli.CommandLine.RunAll
+import picocli.CommandLine.defaultExceptionHandler
+import kotlin.system.exitProcess
 
-fun main(args: Array<String>) {
-    val ignoreConstants = "--ignore-constants" in args
-    val analyzer = HistoryAnalyzer(ignoreConstants)
-    val repository = PersistentRepository.load()
-        ?: error("Repository not found!")
-    val report = analyzer.analyze(repository.getHistory())
-    JsonModule.serialize(System.out, report.files)
+@Command(
+    name = "metanalysis-eb",
+    mixinStandardHelpOptions = true,
+    version = ["0.2"],
+    showDefaultValues = true
+)
+class Main : Runnable {
+    @Option(
+        names = ["--ignore-constants"],
+        description = ["ignore decapsulations of constant fields"]
+    )
+    private var ignoreConstants: Boolean = false
+
+    override fun run() {
+        val analyzer = HistoryAnalyzer(ignoreConstants)
+        val repository = PersistentRepository.load()
+            ?: error("Repository not found!")
+        val report = analyzer.analyze(repository.getHistory())
+        JsonModule.serialize(System.out, report.files)
+    }
+}
+
+fun main(vararg args: String) {
+    val cmd = CommandLine(Main())
+    val exceptionHandler = defaultExceptionHandler().andExit(1)
+    try {
+        cmd.parseWithHandlers(RunAll(), exceptionHandler, *args)
+    } catch (e: ExecutionException) {
+        System.err.println(e.message)
+        e.printStackTrace(System.err)
+        exitProcess(1)
+    }
 }

@@ -18,7 +18,7 @@ In order to use `metanalysis-eb` you need to have `JDK 1.8` or newer.
 
 Download the most recently released distribution from
 [here](https://github.com/andreihh/metanalysis-eb/releases) and run the
-executable from the `bin` directory: `./metanalysis-eb help`.
+executable from the `bin` directory: `./metanalysis-eb --help`.
 
 ## Building
 
